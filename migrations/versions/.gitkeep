@@ -1,0 +1,4 @@
+# migrations/versions/.gitkeep
+# This directory will contain auto-generated Alembic migration files.
+# Run: alembic revision --autogenerate -m "initial_tables"
+# Then: alembic upgrade head

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% set show_navbar = false %}
+
+{% block title %}Login — ChatApp{% endblock %}
+
+{% block content %}
+<div class="auth-page d-flex align-items-center justify-content-center min-vh-100">
+  <div class="card auth-card shadow-sm">
+    <div class="card-body p-4">
+
+      <!-- Logo -->
+      <div class="text-center mb-4">
+        <i class="bi bi-chat-dots-fill text-primary" style="font-size: 2.5rem;"></i>
+        <h4 class="mt-2 fw-bold">Welcome back</h4>
+        <p class="text-muted small">Sign in to ChatApp</p>
+      </div>
+
+      <!-- Error alert -->
+      {% if error %}
+      <div class="alert alert-danger py-2 small" id="loginError">
+        <i class="bi bi-exclamation-circle me-1"></i>{{ error }}
+      </div>
+      {% endif %}
+
+      <!-- Login Form -->
+      <form id="loginForm" method="POST" action="/login">
+        <div class="mb-3">
+          <label for="email" class="form-label">Email address</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input
+              type="email"
+              class="form-control"
+              id="email"
+              name="email"
+              placeholder="you@example.com"
+              required
+              autocomplete="email"
+              value="{{ email if email else '' }}"
+            />
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input
+              type="password"
+              class="form-control"
+              id="password"
+              name="password"
+              placeholder="••••••••"
+              required
+              autocomplete="current-password"
+            />
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword" title="Show/hide password">
+              <i class="bi bi-eye" id="eyeIcon"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="d-grid mt-4">
+          <button type="submit" class="btn btn-primary" id="loginBtn">
+            <span id="loginSpinner" class="spinner-border spinner-border-sm d-none me-2" role="status"></span>
+            <i class="bi bi-box-arrow-in-right me-1"></i> Sign In
+          </button>
+        </div>
+      </form>
+
+      <hr class="my-3" />
+
+      <p class="text-center text-muted small mb-0">
+        Don't have an account?
+        <a href="/register" class="text-decoration-none">Register here</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Toggle password visibility
+  document.getElementById('togglePassword').addEventListener('click', function () {
+    const pwd = document.getElementById('password');
+    const icon = document.getElementById('eyeIcon');
+    if (pwd.type === 'password') {
+      pwd.type = 'text';
+      icon.className = 'bi bi-eye-slash';
+    } else {
+      pwd.type = 'password';
+      icon.className = 'bi bi-eye';
+    }
+  });
+
+  // Show spinner on submit
+  document.getElementById('loginForm').addEventListener('submit', function () {
+    document.getElementById('loginSpinner').classList.remove('d-none');
+    document.getElementById('loginBtn').disabled = true;
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,642 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — ChatApp{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+
+  <!-- ── LEFT SIDEBAR: Users & Groups ───────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+
+    <!-- Search users -->
+    <div class="px-3 pt-3 pb-2 border-bottom">
+      <input
+        type="search"
+        class="form-control form-control-sm"
+        id="userSearch"
+        placeholder="Search users..."
+        autocomplete="off"
+      />
+    </div>
+
+    <!-- Tabs: Users | Groups -->
+    <ul class="nav nav-tabs nav-fill px-2 pt-2" id="sidebarTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="users-tab" data-bs-toggle="tab"
+          data-bs-target="#usersPanel" type="button" role="tab">
+          <i class="bi bi-people me-1"></i> Users
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="groups-tab" data-bs-toggle="tab"
+          data-bs-target="#groupsPanel" type="button" role="tab">
+          <i class="bi bi-collection me-1"></i> Groups
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content flex-grow-1 overflow-auto">
+
+      <!-- ── Users Panel ───────────────────────────────────────────────── -->
+      <div class="tab-pane fade show active" id="usersPanel" role="tabpanel">
+        <div class="list-group list-group-flush" id="userList">
+          <!-- Populated by JS -->
+          <div class="text-center py-4 text-muted small" id="userListLoading">
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+            <div class="mt-1">Loading users...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Groups Panel ─────────────────────────────────────────────── -->
+      <div class="tab-pane fade" id="groupsPanel" role="tabpanel">
+        <div class="p-2">
+          <button class="btn btn-sm btn-outline-primary w-100 mb-2" id="createGroupBtn">
+            <i class="bi bi-plus-circle me-1"></i> New Group
+          </button>
+        </div>
+        <div class="list-group list-group-flush" id="groupList">
+          <div class="text-center py-4 text-muted small" id="groupListLoading">
+            <div class="spinner-border spinner-border-sm" role="status"></div>
+            <div class="mt-1">Loading groups...</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ── MAIN CHAT AREA ─────────────────────────────────────────────────── -->
+  <main class="chat-area">
+
+    <!-- No chat selected state -->
+    <div class="chat-placeholder" id="chatPlaceholder">
+      <div class="text-center text-muted">
+        <i class="bi bi-chat-square-dots" style="font-size: 4rem; opacity: 0.3;"></i>
+        <h5 class="mt-3">Select a conversation</h5>
+        <p class="small">Click on a user or group to start chatting</p>
+      </div>
+    </div>
+
+    <!-- Chat window (hidden until a chat is selected) -->
+    <div class="chat-window d-none" id="chatWindow">
+
+      <!-- Chat Header -->
+      <div class="chat-header d-flex align-items-center px-3 py-2 border-bottom">
+        <div class="me-2">
+          <div class="avatar-circle" id="chatAvatar">?</div>
+        </div>
+        <div class="flex-grow-1">
+          <div class="fw-semibold" id="chatTitle">—</div>
+          <div class="small text-muted" id="chatStatus">Offline</div>
+        </div>
+        <div class="d-flex gap-2">
+          <span class="badge bg-secondary" id="memberCount" title="Members in chat"></span>
+        </div>
+      </div>
+
+      <!-- Messages Container -->
+      <div class="messages-container" id="messagesContainer">
+        <div class="text-center py-3 text-muted small" id="messagesLoading">
+          <div class="spinner-border spinner-border-sm" role="status"></div>
+          Loading messages...
+        </div>
+      </div>
+
+      <!-- Typing Indicator -->
+      <div class="typing-indicator d-none px-3 py-1" id="typingIndicator">
+        <span id="typingText" class="text-muted small fst-italic">
+          <span class="typing-dots"><span></span><span></span><span></span></span>
+          Someone is typing...
+        </span>
+      </div>
+
+      <!-- Message Input -->
+      <div class="message-input-area px-3 py-2 border-top">
+        <div class="input-group">
+          <textarea
+            class="form-control"
+            id="messageInput"
+            rows="1"
+            placeholder="Type a message... (Enter to send)"
+            maxlength="4000"
+            autocomplete="off"
+          ></textarea>
+          <button class="btn btn-primary" id="sendBtn" title="Send message">
+            <i class="bi bi-send-fill"></i>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<!-- ── Create Group Modal ──────────────────────────────────────────────── -->
+<div class="modal fade" id="createGroupModal" tabindex="-1" aria-labelledby="createGroupModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="createGroupModalLabel">
+          <i class="bi bi-collection me-2"></i>Create New Group
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="groupName" class="form-label">Group Name <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="groupName" placeholder="e.g. Team Alpha" maxlength="100" />
+        </div>
+        <div class="mb-3">
+          <label for="groupDesc" class="form-label">Description</label>
+          <input type="text" class="form-control" id="groupDesc" placeholder="Optional description" maxlength="500" />
+        </div>
+        <div id="createGroupError" class="alert alert-danger py-2 small d-none"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="createGroupSubmit">
+          <i class="bi bi-plus-circle me-1"></i> Create Group
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ============================================================
+// DASHBOARD JAVASCRIPT
+// ============================================================
+
+// ── Configuration ─────────────────────────────────────────────────────────
+const ACCESS_TOKEN = "{{ access_token }}";
+const CURRENT_USER_ID = "{{ current_user_id }}";
+const CURRENT_USERNAME = "{{ current_user }}";
+const WS_BASE = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+
+// ── State ──────────────────────────────────────────────────────────────────
+let currentChatId = null;
+let currentChatType = null;  // 'private' | 'group'
+let currentWs = null;
+let onlineUsers = new Set();
+let typingTimeout = null;
+let isTyping = false;
+let allUsers = [];
+let allGroups = [];
+
+// ── Auth headers ────────────────────────────────────────────────────────────
+const authHeaders = {
+  'Authorization': `Bearer ${ACCESS_TOKEN}`,
+  'Content-Type': 'application/json',
+};
+
+// ── API Helpers ─────────────────────────────────────────────────────────────
+async function apiGet(url) {
+  const res = await fetch(url, { headers: authHeaders });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function apiPost(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: authHeaders,
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOAD USERS
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    allUsers = await apiGet('/users/');
+    const onlineData = await apiGet('/users/online');
+    onlineUsers = new Set(onlineData.online_users);
+    renderUserList(allUsers);
+  } catch (e) {
+    document.getElementById('userListLoading').innerHTML =
+      '<div class="text-danger small p-3">Failed to load users</div>';
+  }
+}
+
+function renderUserList(users) {
+  const list = document.getElementById('userList');
+  document.getElementById('userListLoading').remove();
+
+  if (users.length === 0) {
+    list.innerHTML = '<div class="text-muted small text-center p-3">No other users yet</div>';
+    return;
+  }
+
+  list.innerHTML = users.map(user => {
+    const isOnline = onlineUsers.has(user.id);
+    return `
+      <button
+        class="list-group-item list-group-item-action user-item d-flex align-items-center gap-2"
+        onclick="openPrivateChat('${user.id}', '${user.username}')"
+        id="user-${user.id}"
+      >
+        <div class="avatar-circle small-avatar">${user.username[0].toUpperCase()}</div>
+        <div class="flex-grow-1 text-start">
+          <div class="fw-semibold">${user.username}</div>
+          <div class="small ${isOnline ? 'text-success' : 'text-muted'}">
+            ${isOnline ? '● Online' : '○ Offline'}
+          </div>
+        </div>
+      </button>
+    `;
+  }).join('');
+}
+
+// ── User search filter ──────────────────────────────────────────────────────
+document.getElementById('userSearch').addEventListener('input', function () {
+  const q = this.value.toLowerCase();
+  const filtered = allUsers.filter(u => u.username.toLowerCase().includes(q));
+  // Re-render just the list items
+  const items = document.querySelectorAll('.user-item');
+  items.forEach(item => {
+    const name = item.querySelector('.fw-semibold').textContent.toLowerCase();
+    item.style.display = name.includes(q) ? '' : 'none';
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOAD GROUPS
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadGroups() {
+  try {
+    allGroups = await apiGet('/groups/');
+    renderGroupList(allGroups);
+  } catch (e) {
+    document.getElementById('groupListLoading').innerHTML =
+      '<div class="text-danger small p-3">Failed to load groups</div>';
+  }
+}
+
+function renderGroupList(groups) {
+  const list = document.getElementById('groupList');
+  const loading = document.getElementById('groupListLoading');
+  if (loading) loading.remove();
+
+  list.innerHTML = '';
+
+  if (groups.length === 0) {
+    list.innerHTML = '<div class="text-muted small text-center p-3">No groups yet</div>';
+    return;
+  }
+
+  groups.forEach(group => {
+    const btn = document.createElement('button');
+    btn.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
+    btn.innerHTML = `
+      <div class="avatar-circle small-avatar bg-success">${group.name[0].toUpperCase()}</div>
+      <div class="flex-grow-1 text-start">
+        <div class="fw-semibold">${group.name}</div>
+        <div class="small text-muted">${group.description || 'Group Chat'}</div>
+      </div>
+    `;
+    btn.onclick = () => openGroupChat(group.chat_id, group.name, group.id);
+    list.appendChild(btn);
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPEN PRIVATE CHAT
+// ─────────────────────────────────────────────────────────────────────────────
+async function openPrivateChat(userId, username) {
+  try {
+    // Create or fetch the existing chat
+    const chat = await apiPost('/chats/', { other_user_id: userId });
+    const isOnline = onlineUsers.has(userId);
+
+    openChat(
+      chat.id,
+      'private',
+      username,
+      isOnline ? '● Online' : '○ Offline',
+      username[0].toUpperCase()
+    );
+  } catch (e) {
+    alert('Could not open chat: ' + e.message);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPEN GROUP CHAT
+// ─────────────────────────────────────────────────────────────────────────────
+async function openGroupChat(chatId, groupName, groupId) {
+  try {
+    const members = await apiGet(`/groups/${groupId}/members`);
+    openChat(
+      chatId,
+      'group',
+      groupName,
+      `${members.length} members`,
+      groupName[0].toUpperCase()
+    );
+  } catch (e) {
+    openChat(chatId, 'group', groupName, 'Group Chat', groupName[0].toUpperCase());
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CORE: openChat — load history + connect WebSocket
+// ─────────────────────────────────────────────────────────────────────────────
+async function openChat(chatId, type, title, status, avatarChar) {
+  // Close existing WebSocket
+  if (currentWs) {
+    currentWs.close();
+    currentWs = null;
+  }
+
+  currentChatId = chatId;
+  currentChatType = type;
+
+  // Update UI
+  document.getElementById('chatPlaceholder').classList.add('d-none');
+  document.getElementById('chatWindow').classList.remove('d-none');
+  document.getElementById('chatTitle').textContent = title;
+  document.getElementById('chatStatus').textContent = status;
+  document.getElementById('chatAvatar').textContent = avatarChar;
+
+  // Load history
+  const container = document.getElementById('messagesContainer');
+  document.getElementById('messagesLoading').classList.remove('d-none');
+  container.innerHTML = '<div id="messagesLoading" class="text-center py-3 text-muted small"><div class="spinner-border spinner-border-sm" role="status"></div> Loading messages...</div>';
+
+  try {
+    const data = await apiGet(`/chats/${chatId}/messages?page=1&limit=50`);
+    container.innerHTML = '';
+
+    if (data.messages.length === 0) {
+      container.innerHTML = '<div class="text-center text-muted small py-4">No messages yet. Say hello! 👋</div>';
+    } else {
+      data.messages.forEach(msg => appendMessage(msg, true));
+    }
+    scrollToBottom();
+  } catch (e) {
+    container.innerHTML = '<div class="text-danger small text-center p-3">Failed to load history</div>';
+  }
+
+  // Connect WebSocket
+  connectWebSocket(chatId);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEBSOCKET
+// ─────────────────────────────────────────────────────────────────────────────
+function connectWebSocket(chatId) {
+  const wsUrl = `${WS_BASE}/ws/${chatId}?token=${ACCESS_TOKEN}`;
+  currentWs = new WebSocket(wsUrl);
+
+  currentWs.onopen = () => {
+    console.log('WebSocket connected to chat:', chatId);
+    // Start keepalive ping every 30 seconds
+    setInterval(() => {
+      if (currentWs && currentWs.readyState === WebSocket.OPEN) {
+        currentWs.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+  };
+
+  currentWs.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    handleWsMessage(data);
+  };
+
+  currentWs.onerror = (err) => {
+    console.error('WebSocket error:', err);
+  };
+
+  currentWs.onclose = (event) => {
+    console.log('WebSocket closed:', event.code, event.reason);
+    if (event.code !== 1000) {
+      // Unexpected close — update status
+      document.getElementById('chatStatus').textContent = '● Disconnected';
+    }
+  };
+}
+
+function handleWsMessage(data) {
+  switch (data.type) {
+    case 'message':
+      hideTypingIndicator();
+      appendMessage({
+        id: data.id,
+        sender_id: data.sender_id,
+        sender_username: data.sender,
+        content: data.content,
+        created_at: data.timestamp,
+        is_read: false,
+      }, false);
+      scrollToBottom();
+      break;
+
+    case 'typing':
+      if (data.user_id !== CURRENT_USER_ID) {
+        if (data.is_typing) {
+          showTypingIndicator(data.username);
+        } else {
+          hideTypingIndicator();
+        }
+      }
+      break;
+
+    case 'user_joined':
+    case 'user_left':
+      if (data.online_users) {
+        onlineUsers = new Set(data.online_users);
+        updateOnlineStatuses();
+      }
+      break;
+
+    case 'pong':
+      // Keepalive acknowledged
+      break;
+
+    case 'error':
+      console.warn('Server error:', data.detail);
+      break;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER MESSAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function appendMessage(msg, isHistory) {
+  const container = document.getElementById('messagesContainer');
+  const isMe = msg.sender_id === CURRENT_USER_ID;
+
+  const div = document.createElement('div');
+  div.className = `message-row ${isMe ? 'me' : 'them'}`;
+
+  const time = msg.created_at
+    ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
+
+  div.innerHTML = `
+    <div class="message-bubble ${isMe ? 'bubble-me' : 'bubble-them'}">
+      ${!isMe ? `<div class="message-sender">${msg.sender_username || 'Unknown'}</div>` : ''}
+      <div class="message-content">${escapeHtml(msg.content)}</div>
+      <div class="message-time">${time}</div>
+    </div>
+  `;
+
+  container.appendChild(div);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEND MESSAGE
+// ─────────────────────────────────────────────────────────────────────────────
+function sendMessage() {
+  const input = document.getElementById('messageInput');
+  const content = input.value.trim();
+
+  if (!content || !currentWs || currentWs.readyState !== WebSocket.OPEN) return;
+
+  currentWs.send(JSON.stringify({ type: 'message', content }));
+  input.value = '';
+  input.style.height = 'auto';
+
+  // Stop typing indicator
+  sendTyping(false);
+}
+
+document.getElementById('sendBtn').addEventListener('click', sendMessage);
+
+document.getElementById('messageInput').addEventListener('keydown', function (e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+// Auto-resize textarea
+document.getElementById('messageInput').addEventListener('input', function () {
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+
+  // Typing indicator
+  if (this.value.length > 0) {
+    if (!isTyping) {
+      isTyping = true;
+      sendTyping(true);
+    }
+    clearTimeout(typingTimeout);
+    typingTimeout = setTimeout(() => {
+      isTyping = false;
+      sendTyping(false);
+    }, 2000);
+  } else {
+    isTyping = false;
+    sendTyping(false);
+  }
+});
+
+function sendTyping(typing) {
+  if (currentWs && currentWs.readyState === WebSocket.OPEN) {
+    currentWs.send(JSON.stringify({ type: 'typing', is_typing: typing }));
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPING INDICATOR UI
+// ─────────────────────────────────────────────────────────────────────────────
+let typingHideTimeout = null;
+
+function showTypingIndicator(username) {
+  const el = document.getElementById('typingIndicator');
+  document.getElementById('typingText').innerHTML = `
+    <span class="typing-dots"><span></span><span></span><span></span></span>
+    <em>${username} is typing...</em>
+  `;
+  el.classList.remove('d-none');
+  clearTimeout(typingHideTimeout);
+  typingHideTimeout = setTimeout(hideTypingIndicator, 3000);
+  scrollToBottom();
+}
+
+function hideTypingIndicator() {
+  document.getElementById('typingIndicator').classList.add('d-none');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CREATE GROUP
+// ─────────────────────────────────────────────────────────────────────────────
+document.getElementById('createGroupBtn').addEventListener('click', () => {
+  new bootstrap.Modal(document.getElementById('createGroupModal')).show();
+});
+
+document.getElementById('createGroupSubmit').addEventListener('click', async () => {
+  const name = document.getElementById('groupName').value.trim();
+  const description = document.getElementById('groupDesc').value.trim();
+  const errEl = document.getElementById('createGroupError');
+
+  if (!name) {
+    errEl.textContent = 'Group name is required.';
+    errEl.classList.remove('d-none');
+    return;
+  }
+
+  try {
+    const group = await apiPost('/groups/', { name, description, member_ids: [] });
+    bootstrap.Modal.getInstance(document.getElementById('createGroupModal')).hide();
+    document.getElementById('groupName').value = '';
+    document.getElementById('groupDesc').value = '';
+    errEl.classList.add('d-none');
+
+    // Add to list and open it
+    allGroups.unshift(group);
+    renderGroupList(allGroups);
+
+    // Switch to groups tab and open the new group
+    document.getElementById('groups-tab').click();
+    openGroupChat(group.chat_id, group.name, group.id);
+  } catch (e) {
+    let msg = 'Failed to create group';
+    try { msg = JSON.parse(e.message).detail || msg; } catch {}
+    errEl.textContent = msg;
+    errEl.classList.remove('d-none');
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────────────────────────────────────
+function scrollToBottom() {
+  const c = document.getElementById('messagesContainer');
+  c.scrollTop = c.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(text));
+  return d.innerHTML;
+}
+
+function updateOnlineStatuses() {
+  allUsers.forEach(user => {
+    const statusEl = document.querySelector(`#user-${user.id} .small`);
+    if (statusEl) {
+      const isOnline = onlineUsers.has(user.id);
+      statusEl.textContent = isOnline ? '● Online' : '○ Offline';
+      statusEl.className = `small ${isOnline ? 'text-success' : 'text-muted'}`;
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
+(async () => {
+  await Promise.all([loadUsers(), loadGroups()]);
+})();
+</script>
+{% endblock %}
