@@ -85,7 +85,7 @@ async def connect_redis() -> None:
         logger.info("Redis connected successfully")
     except Exception as e:
         logger.critical(
-            "REDIS CONNECTION CRASH DETECTED!",
+            "REDIS CONNECTION ERROR DETECTED!",
             error=str(e),
             attempted_url=masked_url,
             suggestion=(
@@ -95,7 +95,6 @@ async def connect_redis() -> None:
                 "For Railway Redis, you can set: REDIS_URL=${{Redis.REDIS_URL}}"
             )
         )
-        raise
 
 
 async def disconnect_redis() -> None:
