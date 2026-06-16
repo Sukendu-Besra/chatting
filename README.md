@@ -1,6 +1,6 @@
 # 💬 Real-Time Chat Application
 
-A **production-style** Real-Time Chat Application built with **FastAPI**, **PostgreSQL**, **Redis**, and **WebSockets**. Designed to demonstrate backend engineering skills for internship and placement interviews.
+A **production-style** Real-Time Chat Application built with **FastAPI**, **PostgreSQL**, **Redis**, and **WebSockets**. Designed to demonstrate backend engineering skills for internship and placement interviews.S
 
 ---
 

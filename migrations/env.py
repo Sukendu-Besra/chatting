@@ -26,9 +26,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+from app.config.settings import settings
+
 # ── Override DB URL from environment variable ─────────────────────────────
 # This allows docker-compose to inject the URL without editing alembic.ini
-sync_url = os.getenv("SYNC_DATABASE_URL")
+sync_url = settings.SYNC_DATABASE_URL
 if sync_url:
     config.set_main_option("sqlalchemy.url", sync_url)
 

@@ -32,6 +32,28 @@ redis_client: aioredis.Redis | None = None
 ONLINE_USERS_KEY = "online_users"
 
 
+def mask_redis_url(url: str) -> str:
+    """Mask password in Redis URL for safe logging."""
+    if not url:
+        return ""
+    from urllib.parse import urlparse, urlunparse
+    try:
+        parsed = urlparse(url)
+        if parsed.password:
+            # Rebuild the network location with password masked
+            netloc = parsed.netloc
+            if parsed.username:
+                netloc = f"{parsed.username}:****@{parsed.hostname}"
+            else:
+                netloc = f"****@{parsed.hostname}"
+            if parsed.port:
+                netloc += f":{parsed.port}"
+            return urlunparse(parsed._replace(netloc=netloc))
+    except Exception:
+        pass
+    return url
+
+
 async def get_redis() -> aioredis.Redis:
     """Return the module-level Redis client."""
     global redis_client
@@ -48,6 +70,9 @@ async def get_redis() -> aioredis.Redis:
 async def connect_redis() -> None:
     """Called on application startup to initialise the Redis client."""
     global redis_client
+    masked_url = mask_redis_url(settings.REDIS_URL)
+    logger.info("Initialising Redis client", url=masked_url)
+    
     redis_client = aioredis.from_url(
         settings.REDIS_URL,
         encoding="utf-8",
@@ -55,8 +80,22 @@ async def connect_redis() -> None:
         max_connections=20,
     )
     # Ping to verify connection
-    await redis_client.ping()
-    logger.info("Redis connected", url=settings.REDIS_URL)
+    try:
+        await redis_client.ping()
+        logger.info("Redis connected successfully")
+    except Exception as e:
+        logger.critical(
+            "REDIS CONNECTION CRASH DETECTED!",
+            error=str(e),
+            attempted_url=masked_url,
+            suggestion=(
+                "Please check your environment variables in Railway. "
+                "Ensure that 'REDIS_URL' (or 'REDISPRIVATE_URL', 'REDISURL') "
+                "is correctly configured with the password matching your Redis service. "
+                "For Railway Redis, you can set: REDIS_URL=${{Redis.REDIS_URL}}"
+            )
+        )
+        raise
 
 
 async def disconnect_redis() -> None:
